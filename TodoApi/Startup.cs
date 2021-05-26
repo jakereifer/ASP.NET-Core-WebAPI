@@ -32,7 +32,7 @@ namespace TodoApi
             services.AddControllers();
             services.AddSwaggerGen(c =>
             {
-                c.SwaggerDoc("v1", new OpenApiInfo { Title = "TodoApi", Version = "v1" });
+                c.SwaggerDoc("v1", new OpenApiInfo { Title = "TodoApi", Description = "This is Jake's Test API", Version = "v1" });
             });
             services.AddDbContext<TodoContext>(opt =>
                                                opt.UseInMemoryDatabase("TodoList"));
