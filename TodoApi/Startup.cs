@@ -15,6 +15,7 @@ using Microsoft.EntityFrameworkCore;
 using TodoApi.Models;
 using Microsoft.AspNetCore.Http;
 using TodoApi.Middleware;
+using TodoApi.Database;
 
 namespace TodoApi
 {
@@ -35,8 +36,11 @@ namespace TodoApi
             {
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "TodoApi", Description = "This is Jake's Test API", Version = "v1" });
             });
-            services.AddDbContext<TodoContext>(opt =>
-                                               opt.UseInMemoryDatabase("TodoList"));
+            // Use a mock db context
+            // services.AddDbContext<TodoContext>(opt =>
+                                            //    opt.UseInMemoryDatabase("TodoList"));
+            // Use an in memory dictionary
+            services.AddSingleton<IMockDB<TodoItem>, TodoMockDB>();
             services.AddTransient<FactoryBasedMiddleware>(); // must register factory based
 
             // If you need to use a service, call the following, but it will create 2 singletons.
