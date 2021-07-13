@@ -16,6 +16,8 @@ using TodoApi.Models;
 using Microsoft.AspNetCore.Http;
 using TodoApi.Middleware;
 using TodoApi.Database;
+using System.Reflection;
+using System.IO;
 
 namespace TodoApi
 {
@@ -35,13 +37,15 @@ namespace TodoApi
             services.AddSwaggerGen(c =>
             {
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "TodoApi", Description = "This is Jake's Test API", Version = "v1" });
+                // Enable swagger doc summaries from docstrings
+                var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
+                var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+                c.IncludeXmlComments(xmlPath);
             });
-            // Use a mock db context
-            // services.AddDbContext<TodoContext>(opt =>
-                                            //    opt.UseInMemoryDatabase("TodoList"));
+            var value = Configuration["hello:world"];
             // Use an in memory dictionary
             services.AddSingleton<IMockDB<TodoItem>, TodoMockDB>();
-            services.AddTransient<FactoryBasedMiddleware>(); // must register factory based
+            services.AddTransient<LoggingMiddleware>(); // must register factory based
 
             // If you need to use a service, call the following, but it will create 2 singletons.
             /*
@@ -58,8 +62,13 @@ namespace TodoApi
             {
                 app.UseDeveloperExceptionPage();
                 app.UseSwagger();
-                app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "TodoApi v1"));
+                app.UseSwaggerUI(c =>
+                {
+                    c.SwaggerEndpoint("/swagger/v1/swagger.json", "TodoApi v1");
+                    c.RoutePrefix = string.Empty; // make the https://localhost:port/ be the swagger ui
+                });
             }
+            /* example of creating middleware inline
             app.Use(async (context, next) =>
             {
                 // Do work that doesn't write to the Response.
@@ -76,18 +85,20 @@ namespace TodoApi
                 logger.LogInformation(context.Request.Path);
                 await context.Response.WriteAsync("Hello, World!\nPath: " + context.Request.Path);
             });
+            */
 
+            app.UseLoggingMiddleware();
+            app.UseHttpsRedirection();
 
-            // app.UseHttpsRedirection();
+            app.UseRouting();
 
-            // app.UseRouting();
+            app.UseAuthorization();
 
-            // app.UseAuthorization();
-
-            // app.UseEndpoints(endpoints =>
-            // {
-            //     endpoints.MapControllers();
-            // });
+            app.UseEndpoints(endpoints =>
+            {
+                // endpoints.MapGet("/", async context => await context.Response.WriteAsync("Worker Process Name : " + System.Diagnostics.Process.GetCurrentProcess().ProcessName));
+                endpoints.MapControllers();
+            });
         }
     }
 }
