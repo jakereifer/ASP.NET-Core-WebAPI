@@ -25,6 +25,7 @@ namespace TodoApi.Database {
         {
             MaxId++;
             item.Id = MaxId;
+            item.Secret = new Random().Next().ToString();
             _dict[item.Id] = item;
             return Task.FromResult(item.Id);
         }
@@ -45,7 +46,7 @@ namespace TodoApi.Database {
         public async Task<TodoItem> GetAsync(int id)
         {
             if (!await ExistsAsync(id)) {
-                throw new ArgumentException($"No TodoItem with id {id}");
+                return null;
             }
             return _dict[id];
         }

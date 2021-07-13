@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using TodoApi.Database;
 using TodoApi.Models;
 
 namespace TodoApi.Controllers
@@ -17,87 +18,109 @@ namespace TodoApi.Controllers
     [Produces(MediaTypeNames.Application.Json)]
     public class TodoItemsController : ControllerBase
     {
-        private readonly TodoContext _context;
+        private readonly IMockDB<TodoItem> _database;
         private readonly ILogger<TodoItemsController> _logger;
 
-        public TodoItemsController(TodoContext context, ILogger<TodoItemsController> logger)
+        public TodoItemsController(
+            IMockDB<TodoItem> database,
+            ILogger<TodoItemsController> logger
+        )
         {
-            _context = context;
+            _database = database;
             _logger = logger;
         }
 
-        // GET: api/TodoItems
+        /// <summary>
+        /// Gets all items.
+        /// </summary>
         [HttpGet]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        public async Task<ActionResult<IEnumerable<TodoItemDTO>>> GetTodoItems([FromServices] ILogger<TodoItemsController> log)
+        public async Task<ActionResult<IEnumerable<TodoItemDTO>>> GetTodoItems()
         {
-            _logger.LogInformation("Get called");
-            log.LogInformation("DI'd from the action");
-            throw new Exception("Hello!");
-            return await _context.TodoItems
-                .Select(x => ItemToDTO(x))
-                .ToListAsync();
+            _logger.LogInformation("'GET' called");
+            var todoItems =  await _database.ListAsync();
+            var itemsList = todoItems.Select(x => ItemToDTO(x)).ToList();
+            return itemsList;
         }
 
+        /// <summary>
+        /// Gets a specific item by its id.
+        /// </summary>
+        /// <param name="id">The id of the TodoItem</param>
+        /// <returns>The specific TodoItem</returns>
         [HttpGet("{id}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<TodoItemDTO>> GetTodoItem(long id)
+        public async Task<ActionResult<TodoItemDTO>> GetTodoItem(int id)
         {
-            var todoItem = await _context.TodoItems.FindAsync(id);
+            _logger.LogInformation($"'GET {id}' called");
+            var todoItem = await _database.GetAsync(id);
 
             if (todoItem == null)
             {
+                _logger.LogError($"No Todo Item with id '{id}' found");
                 return NotFound();
             }
 
             return ItemToDTO(todoItem);
         }
 
+        /// <summary>
+        /// Updates a TodoItem by its id.
+        /// </summary>
+        /// <param name="id">The id of the TodoItem being updated</param>
+        /// <param name="todoItemDTO">The deserialized updated item from the request</param>
+        /// <returns>No content</returns>
         [HttpPut("{id}")]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
-        public async Task<IActionResult> UpdateTodoItem(long id, TodoItemDTO todoItemDTO)
+        public async Task<IActionResult> UpdateTodoItem(int id, TodoItemDTO todoItemDTO)
         {
+            _logger.LogInformation($"'PUT {id}' called");
             if (id != todoItemDTO.Id)
             {
+                _logger.LogError($"Provided id '{id}' does not match id of input Todo Item object");
                 return BadRequest();
             }
 
-            var todoItem = await _context.TodoItems.FindAsync(id);
+            var todoItem = await _database.GetAsync(id);
             if (todoItem == null)
             {
+                _logger.LogError($"No Todo Item with id '{id}' found");
                 return NotFound();
             }
 
             todoItem.Name = todoItemDTO.Name;
             todoItem.IsComplete = todoItemDTO.IsComplete;
 
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException) when (!TodoItemExists(id))
-            {
+            try {
+                await _database.UpdateAsync(todoItem);
+            } catch (ArgumentException e) {
+                _logger.LogError($"Error Encountered: {e.Message}");
                 return NotFound();
             }
 
             return NoContent();
         }
 
+        /// <summary>
+        /// Creates a new TodoItem.
+        /// </summary>
+        /// <param name="todoItemDTO">The deserialized TodoItem from the request</param>
+        /// <returns>The Created TodoItem</returns>
         [HttpPost]
         [ProducesResponseType(StatusCodes.Status201Created)]
         public async Task<ActionResult<TodoItemDTO>> CreateTodoItem(TodoItemDTO todoItemDTO)
         {
+            _logger.LogInformation($"'POST' called");
             var todoItem = new TodoItem
             {
                 IsComplete = todoItemDTO.IsComplete,
                 Name = todoItemDTO.Name
             };
 
-            _context.TodoItems.Add(todoItem);
-            await _context.SaveChangesAsync();
+            await _database.AddAsync(todoItem);
 
             return CreatedAtAction(
                 nameof(GetTodoItem),
@@ -105,26 +128,29 @@ namespace TodoApi.Controllers
                 ItemToDTO(todoItem));
         }
 
+        /// <summary>
+        /// Deletes a specific TodoItem.
+        /// </summary>
+        /// <param name="id">The id of the TodoItem to be deleted</param>
+        /// <returns>No Content</returns>
         [HttpDelete("{id}")]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
-        public async Task<IActionResult> DeleteTodoItem(long id)
+        public async Task<IActionResult> DeleteTodoItem(int id)
         {
-            var todoItem = await _context.TodoItems.FindAsync(id);
+            _logger.LogInformation($"'DELETE {id}' called");
+            var todoItem = await _database.GetAsync(id);
 
             if (todoItem == null)
             {
+                _logger.LogError($"No Todo Item with id '{id}' found");
                 return NotFound();
             }
 
-            _context.TodoItems.Remove(todoItem);
-            await _context.SaveChangesAsync();
+            await _database.DeleteAsync(id);
 
             return NoContent();
         }
-
-        private bool TodoItemExists(long id) =>
-            _context.TodoItems.Any(e => e.Id == id);
 
         private static TodoItemDTO ItemToDTO(TodoItem todoItem) =>
             new TodoItemDTO
