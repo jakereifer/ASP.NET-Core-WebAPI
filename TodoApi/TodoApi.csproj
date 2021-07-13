@@ -2,7 +2,6 @@
 
   <PropertyGroup>
     <TargetFramework>net5.0</TargetFramework>
-    <UserSecretsId>86680189-870b-4ab6-abd6-a4b9c9a7c11c</UserSecretsId>
   </PropertyGroup>
 
   <!--To enable the swagger docs-->
