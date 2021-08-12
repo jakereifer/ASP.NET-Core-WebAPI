@@ -32,7 +32,7 @@ namespace TodoApi.Middleware {
 
             var requestReader = new StreamReader(requestStreamCopy);
             var requestContent = await requestReader.ReadToEndAsync(); // Read it in
-            _logger.LogInformation($"Request Body:\n{requestContent}");
+            _logger.LogInformation("Request Body:\n{@requestContent}", requestContent);
             requestStreamCopy.Position = 0; // make sure its back at the beginning
 
             // Set request body pointer to original stream
@@ -45,7 +45,7 @@ namespace TodoApi.Middleware {
                 newResponseStream.Position = 0;
                 var responseReader = new StreamReader(newResponseStream);
                 var responseContent = await responseReader.ReadToEndAsync();
-                _logger.LogInformation($"Response Body:\n{responseContent}");
+                _logger.LogInformation("Response Body:\n{@responseContent}", responseContent);
 
                 newResponseStream.Position = 0;
                 await newResponseStream.CopyToAsync(originalResponseStream);

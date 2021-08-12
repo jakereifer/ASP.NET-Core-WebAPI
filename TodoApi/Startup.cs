@@ -18,6 +18,8 @@ using TodoApi.Middleware;
 using TodoApi.Database;
 using System.Reflection;
 using System.IO;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Identity.Web;
 
 namespace TodoApi
 {
@@ -33,6 +35,10 @@ namespace TodoApi
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
+            // add to allow authentication
+            services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+                .AddMicrosoftIdentityWebApi(Configuration.GetSection("AzureAd"));
+
             services.AddControllers();
             services.AddSwaggerGen(c =>
             {
@@ -92,6 +98,7 @@ namespace TodoApi
 
             app.UseRouting();
 
+            app.UseAuthentication();
             app.UseAuthorization();
 
             app.UseEndpoints(endpoints =>
